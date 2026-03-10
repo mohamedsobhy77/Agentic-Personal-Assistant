@@ -1,56 +1,76 @@
-import { ChatOllama } from "@langchain/ollama";
-import { createAgent } from "langchain";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
-import { searchKnowledgeBase } from "./tools.js";
+import { tool } from "langchain";
+import { z } from "zod";
+import { PineconeStore } from "@langchain/pinecone";
+import { Pinecone as PineconeClient } from "@pinecone-database/pinecone";
+import { OllamaEmbeddings } from "@langchain/ollama";
 
-const checkpointer = new MemorySaver();
+let vectorStore;
 
-export async function runAgent({ sessionId = "default", message }) {
-  try {
-    const model = new ChatOllama({
-      model: "llama3.1",
-      temperature: 0,
-    });
+const getVectorStore = async () => {
+  if (vectorStore) return vectorStore;
 
-    const agent = createAgent({
-      model,
-      tools: [searchKnowledgeBase],
-      checkpointer,
-      recursionLimit: 50,
-      systemPrompt: `
-You are an AI assistant that answers questions using a knowledge base.
+  const apiKey = process.env.PINECONE_API_KEY;
+  const indexName = process.env.PINECONE_INDEX;
 
-When the user asks a question:
-1. ALWAYS search the knowledge base using the search_knowledge_base tool.
-2. Use the returned context to answer.
-3. If the information is not found, say:
-"I couldn't find information about this in the uploaded documents."
-
-Be concise and accurate.
-`,
-    });
-
-    console.log(`🤖 Running agent for: "${message}"`);
-
-    const response = await agent.invoke(
-      {
-        messages: [{ role: "user", content: message }],
-      },
-      {
-        configurable: {
-          thread_id: sessionId,
-        },
-      }
-    );
-
-    const lastMessage = response.messages[response.messages.length - 1];
-    const output = lastMessage?.content || "";
-
-    console.log(`✅ Agent response: ${output.slice(0, 100)}...`);
-
-    return { output };
-  } catch (error) {
-    console.error("❌ Error in runAgent:", error);
-    throw error;
+  if (!apiKey) {
+    throw new Error("Missing PINECONE_API_KEY");
   }
-}
+
+  if (!indexName) {
+    throw new Error("Missing PINECONE_INDEX");
+  }
+
+  const pc = new PineconeClient({ apiKey });
+  const index = pc.Index(indexName);
+
+  const embeddings = new OllamaEmbeddings({
+    model: "nomic-embed-text",
+  });
+
+  vectorStore = await PineconeStore.fromExistingIndex(
+    embeddings,
+    {
+      pineconeIndex: index
+    }
+  );
+  
+  return vectorStore;
+};
+
+export const searchKnowledgeBase = tool(
+  async ({ query }) => {
+    console.log(`🔍 Agent is searching Pinecone for: "${query}"`);
+
+    const store = await getVectorStore();
+
+    const results = await store.similaritySearch(query, 10);
+
+console.log("RESULT COUNT:", results.length);
+
+results.forEach((r, i) => {
+  console.log(`Result ${i+1}:`, r.pageContent.slice(0,100));
+});
+
+    if (!results || results.length === 0) {
+      return "No information found in the knowledge base.";
+    }
+
+    results.forEach((r, i) => {
+      console.log(`Result ${i + 1}:`, r.pageContent.slice(0, 200));
+    });
+
+    const context = results.map((doc) => doc.pageContent).join("\n\n");
+
+    return `Use the following context to answer the question:
+
+${context}`;
+  },
+  {
+    name: "search_knowledge_base",
+    description:
+      "Searches the internal knowledge base for information from uploaded PDF documents.",
+    schema: z.object({
+      query: z.string().describe("The search query"),
+    }),
+  }
+);
