@@ -1,3 +1,6 @@
+
+<img width="2752" height="1536" alt="unnamed (3)" src="https://github.com/user-attachments/assets/221ed1d0-6acc-41c6-9f20-b72ab1798e70" />
+
 # Agentic Personal Assistant
 
 Upload PDFs, ingest them into a vector database, then chat with an **agent** that can decide when to search your documents.
@@ -117,3 +120,4 @@ The server supports a `sessionId` (thread id) for memory, but the current client
 - **Pinecone errors**: verify `PINECONE_API_KEY` + `PINECONE_INDEX`, and that the index exists.
 - **Ingest succeeds but chat can’t find info**: likely the embedding mismatch above.
 - **Ollama errors**: ensure Ollama is running and the referenced models are available locally.
+
