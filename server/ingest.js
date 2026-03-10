@@ -16,9 +16,14 @@ export const ingestData = async (filePath) => {
 
   const embeddings = new OllamaEmbeddings({
     model: "nomic-embed-text",
-  });  const store = await PineconeStore.fromExistingIndex(embeddings, {
-    pineconeIndex: index,
   });
+  
+  const store = await PineconeStore.fromExistingIndex(
+    embeddings,
+    {
+      pineconeIndex: index
+    }
+  );
 
   const BATCH_SIZE = 96;
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
