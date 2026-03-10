@@ -1,123 +1,337 @@
 
 <img width="2752" height="1536" alt="unnamed (3)" src="https://github.com/user-attachments/assets/221ed1d0-6acc-41c6-9f20-b72ab1798e70" />
 
-# Agentic Personal Assistant
+Agentic Personal Assistant
 
-Upload PDFs, ingest them into a vector database, then chat with an **agent** that can decide when to search your documents.
+An AI-powered document assistant that allows users to upload PDFs, convert them into embeddings, store them in a vector database, and chat with an agentic AI that can intelligently decide when to search the knowledge base.
 
-## High-level architecture
+The system uses a Retrieval-Augmented Generation (RAG) architecture powered by LangChain agents, Pinecone vector database, and a local LLM running via Ollama.
 
-- **Frontend** (`client/`): React + Vite single-page app (upload + chat UI)
-- **Backend** (`server/`): Express API (PDF ingestion + agentic chat)
-- **Vector DB**: Pinecone index stores embedded PDF chunks
+Demo Features
 
-## What the code does 
+Upload PDF documents
 
-### Backend behavior
+Automatically process and split documents into chunks
 
-- **PDF ingestion**: `POST /api/ingest`
-  - accepts a single PDF file (multipart field name: `file`)
-  - loads text from the PDF
-  - splits text into overlapping chunks
-  - embeds chunks and stores them in Pinecone
+Generate vector embeddings
 
-- **Chat**: `POST /api/chat`
-  - runs a LangChain agent that uses **Ollama** (`ChatOllama`, model `llama3.1`)
-  - the agent can call a tool named `search_knowledge_base` to retrieve relevant chunks from Pinecone
-  - returns `{ answer: "..." }`
+Store embeddings in Pinecone
 
-### Frontend behavior
+Chat with an AI agent
 
-- **Upload panel** posts the selected PDF to `http://localhost:3001/api/ingest`
-- **Chat panel** posts messages to `http://localhost:3001/api/chat`
-- AI messages render Markdown via `react-markdown`
+The agent decides when to search the knowledge base
 
-## Prerequisites
+Retrieval-based answers grounded in uploaded documents
 
-- Node.js v18+
-- A Pinecone account + an existing index
-- Ollama installed and running locally (recommended), with:
-  - LLM model referenced by the server: `llama3.1`
-  - embeddings model referenced by ingestion: `nomic-embed-text`
+Markdown-rendered AI responses
 
-## Setup
+High-level Architecture
 
-### Install dependencies
+Frontend (client/)
+React + Vite single-page application providing:
 
-```bash
+PDF upload interface
+
+Chat interface
+
+Markdown AI response rendering
+
+Backend (server/)
+Express.js API responsible for:
+
+PDF ingestion
+
+Vector embedding
+
+Pinecone storage
+
+Running the LangChain agent
+
+Vector Database
+Pinecone stores embedded PDF chunks for semantic search.
+
+System Architecture Flow
+
+User uploads a PDF document
+
+Backend extracts text from the PDF
+
+Text is split into overlapping chunks
+
+Each chunk is converted into vector embeddings
+
+Embeddings are stored in Pinecone
+
+User asks a question
+
+A LangChain Agent decides whether to:
+
+Answer directly
+
+Call the tool search_knowledge_base
+
+Relevant document chunks are retrieved
+
+The LLM generates a context-aware answer
+
+Tools & Technologies Used
+Backend
+
+Node.js – JavaScript runtime for server-side development
+
+Express.js – Lightweight backend framework for APIs
+
+LangChain – Framework for building LLM-powered applications
+
+Ollama – Local LLM runtime
+
+Pinecone – Vector database for semantic search
+
+Multer – File upload middleware for handling PDF files
+
+dotenv – Environment variable management
+
+AI / LLM Stack
+
+LLM Model: llama3.1
+
+Embedding Model: nomic-embed-text
+
+Agent Framework: LangChain Agent
+
+Architecture: Retrieval-Augmented Generation (RAG)
+
+Agent Tool
+
+Custom tool implemented:
+
+search_knowledge_base
+
+Responsible for:
+
+querying Pinecone
+
+retrieving relevant document chunks
+
+passing context back to the LLM
+
+Frontend
+
+React – User interface
+
+Vite – Fast development server and build tool
+
+React Markdown – Rendering AI responses
+
+Fetch API – API communication
+
+Development Tools
+
+Git
+
+GitHub
+
+npm
+
+Node.js v18+
+
+Project Structure
+agentic-personal-assistant/
+│
+├── server/
+│   ├── index.js
+│   ├── agent.js
+│   ├── tools.js
+│   └── ingest.js
+│
+└── client/
+    └── src/App.jsx
+Server Files
+File	Responsibility
+index.js	Express server + API routes
+agent.js	LangChain agent runtime + memory
+tools.js	Pinecone retrieval tool
+ingest.js	PDF ingestion pipeline
+API Endpoints
+Ingest PDF
+
+POST /api/ingest
+
+Uploads and processes a PDF file.
+
+Content-Type
+
+multipart/form-data
+
+Field
+
+file
+
+Response
+
+{ ok: true }
+
+or
+
+{ error: "..." }
+Chat with Agent
+
+POST /api/chat
+
+Sends a user message to the agent.
+
+Content-Type
+
+application/json
+
+Request
+
+{
+  "message": "Your question",
+  "sessionId": "optional"
+}
+
+Response
+
+{
+  "answer": "AI response"
+}
+Prerequisites
+
+Make sure the following tools are installed:
+
+Node.js v18+
+
+Ollama
+
+Pinecone account
+
+Required Ollama Models
+
+Install the required models locally:
+
+ollama pull llama3.1
+ollama pull nomic-embed-text
+Setup
+1 Install Dependencies
 npm run install:all
-```
+2 Configure Environment Variables
 
-### Configure environment variables
+Create:
 
-Create `server/.env` (the server loads env vars via `dotenv/config`).
+server/.env
 
-Minimum required:
+Add:
 
-```env
 PINECONE_API_KEY=your_pinecone_api_key
 PINECONE_INDEX=your_pinecone_index_name
-```
+Run the Project
 
-## Run (development)
+Start both backend and frontend:
 
-Start both server + client:
-
-```bash
 npm run dev
-```
+Server
+http://localhost:3001
+Client
+http://localhost:5173
+Important Implementation Notes
+Embedding Model Mismatch
 
-- Server: `http://localhost:3001`
-- Client: `http://localhost:5173`
+Currently the code uses:
 
-## API
+Ingestion embeddings
 
-### `POST /api/ingest`
+OllamaEmbeddings("nomic-embed-text")
 
-- **Content-Type**: `multipart/form-data`
-- **Field**: `file` (PDF)
-- **Returns**: `{ ok: true }` or `{ error: "..." }`
+in
 
-### `POST /api/chat`
+server/ingest.js
 
-- **Content-Type**: `application/json`
-- **Body**: `{ "message": "..." , "sessionId": "optional" }`
-- **Returns**: `{ "answer": "..." }` or `{ error: "..." }`
+Search embeddings
 
-## Project structure
+PineconeEmbeddings("llama-text-embed-v2")
 
-```
-agentic-personal-assistant/
-├── server/
-│   ├── index.js      # Express server + routes
-│   ├── agent.js      # Agent runtime + memory
-│   ├── tools.js      # Pinecone search tool (search_knowledge_base)
-│   └── ingest.js     # PDF ingestion pipeline
-└── client/
-    └── src/App.jsx   # Upload + chat UI
-```
+in
 
-## Important notes (code-level)
+server/tools.js
 
-### Embedding model mismatch (ingest vs search)
+For best retrieval results, documents and queries must use the same embedding model.
 
-Right now the code uses:
-- **Ingestion embeddings**: `OllamaEmbeddings("nomic-embed-text")` in `server/ingest.js`
-- **Search embeddings**: `PineconeEmbeddings("llama-text-embed-v2")` in `server/tools.js`
+Otherwise search results may be weak or irrelevant.
 
-For best retrieval quality, documents and queries should be embedded with the **same model**. If your search results feel weak or irrelevant, this is the first thing to align.
+Session Memory
 
-### Session memory defaults to one thread
+The backend supports:
 
-The server supports a `sessionId` (thread id) for memory, but the current client sends only `{ message }`, so chats use the server’s default thread unless you wire `sessionId` through.
+sessionId
 
-### Vite proxy is configured but bypassed
+However the current client only sends:
 
-`client/vite.config.js` has a `/api` proxy, but the current client calls `http://localhost:3001/...` directly. If you want the proxy, change the client to call `/api/chat` and `/api/ingest`.
+{ message }
 
-## Troubleshooting
+Which means all chats run in the default thread unless sessionId is added to the frontend.
 
-- **Pinecone errors**: verify `PINECONE_API_KEY` + `PINECONE_INDEX`, and that the index exists.
-- **Ingest succeeds but chat can’t find info**: likely the embedding mismatch above.
-- **Ollama errors**: ensure Ollama is running and the referenced models are available locally.
+Vite Proxy
+
+vite.config.js includes a proxy for:
+
+/api
+
+But the current frontend calls:
+
+http://localhost:3001
+
+directly.
+
+To use the proxy, change the client requests to:
+
+/api/chat
+/api/ingest
+Troubleshooting
+Pinecone errors
+
+Verify PINECONE_API_KEY
+
+Verify PINECONE_INDEX
+
+Ensure the index exists
+
+Ingest works but answers are irrelevant
+
+Likely caused by embedding model mismatch.
+
+Use the same embedding model for:
+
+ingestion
+
+query search
+
+Ollama errors
+
+Ensure:
+
+Ollama is running
+
+Required models are installed locally
+
+Future Improvements
+
+Streaming responses
+
+Multi-document indexing
+
+Conversation memory persistence
+
+Source citations in answers
+
+Drag & drop PDF upload
+
+Authentication system
+
+Cloud LLM support (OpenAI / Claude)
+
+License
+
+This project is open-source and available under the MIT License.
+
 
